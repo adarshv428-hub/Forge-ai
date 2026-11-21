@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ClipForge AI — Viral YouTube & Twitch Clipper</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: #07090f;
+      color: #f8fafc;
+      background-image: 
+        radial-gradient(circle at 15% 15%, rgba(139, 92, 246, 0.16), transparent 40%),
+        radial-gradient(circle at 85% 20%, rgba(6, 182, 212, 0.14), transparent 40%),
+        radial-gradient(circle at 50% 90%, rgba(236, 72, 153, 0.10), transparent 45%);
+      min-height: 100vh;
+    }
+    .glass {
+      background: rgba(15, 23, 42, 0.65);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .neon-glow {
+      box-shadow: 0 0 25px rgba(139, 92, 246, 0.35), 0 0 50px rgba(6, 182, 212, 0.15);
+    }
+    .gradient-text {
+      background: linear-gradient(135deg, #a78bfa 0%, #38bdf8 50%, #f472b6 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #7c3aed 0%, #2563eb 50%, #06b6d4 100%);
+      transition: all 0.25s ease;
+    }
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 25px -5px rgba(124, 58, 237, 0.5);
+    }
+  </style>
+</head>
+<body class="antialiased selection:bg-violet-500 selection:text-white">
+
+  <!-- Navbar -->
+  <nav class="sticky top-0 z-50 glass border-b border-white/10">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-violet-600 to-cyan-400 flex items-center justify-center font-extrabold text-white shadow-lg">
+          ⚡
+        </div>
+        <span class="font-extrabold text-xl tracking-tight">ClipForge <span class="gradient-text">AI</span></span>
+      </div>
+      <div class="flex items-center gap-2 text-xs sm:text-sm">
+        <span class="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">
+          ● YouTube & Twitch Ready
+        </span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero & Input Studio -->
+  <main class="max-w-5xl mx-auto px-4 sm:px-6 pt-10 pb-20">
+    <div class="text-center max-w-2xl mx-auto mb-10">
+      <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full glass text-xs font-semibold text-cyan-300 mb-4 border border-cyan-500/20">
+        ✨ AI Viral Hook Detection + Auto 9:16 Vertical Framing
+      </div>
+      <h1 class="text-3xl sm:text-5xl font-extrabold tracking-tight leading-tight mb-4">
+        Turn Long Videos Into <span class="gradient-text">Viral Shorts</span> in 1 Click
+      </h1>
+      <p class="text-slate-400 text-sm sm:text-base">
+        Paste any <strong>YouTube</strong> video or <strong>Twitch</strong> VOD/Clip link. Our AI finds the highest-retention hooks, scores virality, and crops to 9:16 automatically.
+      </p>
+    </div>
+
+    <!-- Main Control Card -->
+    <div class="glass rounded-3xl p-5 sm:p-8 neon-glow mb-10">
+      <!-- URL Bar -->
+      <div class="flex flex-col sm:flex-row gap-3 mb-6">
+        <div class="relative flex-1">
+          <input
+            id="videoUrl"
+            type="url"
+            placeholder="Paste YouTube or Twitch URL (e.g., https://www.twitch.tv/videos/...)"
+            class="w-full bg-slate-950/80 border border-white/10 focus:border-violet-500 rounded-2xl px-4 py-4 pr-24 text-sm sm:text-base text-white placeholder-slate-500 outline-none transition"
+            oninput="detectPlatform()"
+          />
+          <span id="platformBadge" class="hidden absolute right-3 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg text-xs font-bold uppercase tracking-wider"></span>
+        </div>
+        <button
+          id="generateBtn"
+          onclick="startClipping()"
+          class="btn-primary px-7 py-4 rounded-2xl font-bold text-white text-sm sm:text-base whitespace-nowrap cursor-pointer"
+        >
+          Generate Viral Clips 🚀
+        </button>
+      </div>
+
+      <!-- Options Grid -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- Clip Count -->
+        <div class="bg-slate-950/60 border border-white/5 rounded-2xl p-3.5">
+          <label class="block text-xs font-semibold text-slate-400 mb-1.5">Number of Clips</label>
+          <select id="clipCount" class="w-full bg-transparent text-sm font-bold text-white outline-none">
+            <option value="2" class="bg-slate-900">Top 2 Viral Clips</option>
+            <option value="3" selected class="bg-slate-900">Top 3 Viral Clips</option>
+            <option value="5" class="bg-slate-900">Top 5 Viral Clips</option>
+          </select>
+        </div>
+
+        <!-- Target Duration -->
+        <div class="bg-slate-950/60 border border-white/5 rounded-2xl p-3.5">
+          <label class="block text-xs font-semibold text-slate-400 mb-1.5">Clip Length</label>
+          <select id="clipDuration" class="w-full bg-transparent text-sm font-bold text-white outline-none">
+            <option value="30" class="bg-slate-900">Short (~30 sec)</option>
+            <option value="45" selected class="bg-slate-900">Sweet Spot (~45 sec)</option>
+            <option value="60" class="bg-slate-900">Story (~60 sec)</option>
+          </select>
+        </div>
+
+        <!-- Layout Mode -->
+        <div class="bg-slate-950/60 border border-white/5 rounded-2xl p-3.5">
+          <label class="block text-xs font-semibold text-slate-400 mb-1.5">9:16 Layout Style</label>
+          <select id="layoutMode" class="w-full bg-transparent text-sm font-bold text-white outline-none">
+            <option value="fill" selected class="bg-slate-900">Center Crop (9:16 Fill)</option>
+            <option value="blur" class="bg-slate-900">Blurred Background Fit</option>
+          </select>
+        </div>
+
+        <!-- Topic Focus (Optional) -->
+        <div class="bg-slate-950/60 border border-white/5 rounded-2xl p-3.5">
+          <label class="block text-xs font-semibold text-slate-400 mb-1.5">Topic Keyword (Optional)</label>
+          <input
+            id="topicKeyword"
+            type="text"
+            placeholder="e.g. funny, clutch, tips"
+            class="w-full bg-transparent text-sm font-semibold text-white placeholder-slate-600 outline-none"
+          />
+        </div>
+      </div>
+
+      <!-- Progress Section -->
+      <div id="progressBox" class="hidden mt-6 pt-6 border-t border-white/10">
+        <div class="flex items-center justify-between text-xs sm:text-sm font-semibold mb-2">
+          <span id="statusText" class="text-cyan-300">Initializing AI pipeline...</span>
+          <span id="percentText" class="text-violet-400">10%</span>
+        </div>
+        <div class="w-full h-2.5 bg-slate-900 rounded-full overflow-hidden">
+          <div id="progressBar" class="h-full bg-gradient-to-r from-violet-500 via-blue-500 to-cyan-400 transition-all duration-500" style="width: 10%"></div>
+        </div>
+        <p class="text-xs text-slate-500 mt-2">
+          Note: First run may take ~40s while the free cloud server wakes up. Keep this tab open.
+        </p>
+      </div>
+
+      <!-- Error Alert -->
+      <div id="errorBox" class="hidden mt-5 p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-sm"></div>
+    </div>
+
+    <!-- Results Grid -->
+    <div id="resultsSection" class="hidden">
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="text-xl sm:text-2xl font-extrabold">🔥 Generated Viral Clips</h2>
+        <span id="videoTitleTag" class="text-xs text-slate-400 truncate max-w-xs sm:max-w-md"></span>
+      </div>
+      <div id="clipsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+    </div>
+  </main>
+
+  <script>
+    // REPLACE THIS WITH YOUR RENDER BACKEND URL (no trailing slash)
+    const API_BASE = "YOUR_RENDER_URL_HERE";
+
+    function detectPlatform() {
+      const url = document.getElementById("videoUrl").value.trim().toLowerCase();
+      const badge = document.getElementById("platformBadge");
+      if (url.includes("twitch.tv")) {
+        badge.textContent = "TWITCH";
+        badge.className = "absolute right-3 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg text-xs font-bold bg-purple-600/30 text-purple-300 border border-purple-500/40";
+      } else if (url.includes("youtube.com") || url.includes("youtu.be")) {
+        badge.textContent = "YOUTUBE";
+        badge.className = "absolute right-3 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg text-xs font-bold bg-red-600/30 text-red-300 border border-red-500/40";
+      } else {
+        badge.className = "hidden";
+      }
+    }
+
+    async function startClipping() {
+      const url = document.getElementById("videoUrl").value.trim();
+      if (!url) {
+        showError("Please paste a valid YouTube or Twitch URL first.");
+        return;
+      }
+      if (API_BASE.includes("YOUR_RENDER_URL_HERE")) {
+        showError("Backend URL not configured yet! Follow Step 3 in the guide to paste your Render URL into index.html.");
+        return;
+      }
+
+      hideError();
+      document.getElementById("resultsSection").classList.add("hidden");
+      document.getElementById("progressBox").classList.remove("hidden");
+      document.getElementById("generateBtn").disabled = true;
+      document.getElementById("generateBtn").classList.add("opacity-60");
+      updateProgress(8, "Waking up server & submitting job...");
+
+      try {
+        const res = await fetch(`${API_BASE}/api/process`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            url: url,
+            clip_count: parseInt(document.getElementById("clipCount").value),
+            target_duration: parseInt(document.getElementById("clipDuration").value),
+            layout: document.getElementById("layoutMode").value,
+            keyword: document.getElementById("topicKeyword").value.trim()
+          })
+        });
+
+        if (!res.ok) throw new Error("Server failed to start job. Check your URL.");
+        const { job_id } = await res.json();
+        pollJob(job_id);
+      } catch (err) {
+        resetBtn();
+        showError(err.message);
+      }
+    }
+
+    function pollJob(jobId) {
+      const timer = setInterval(async () => {
+        try {
+          const res = await fetch(`${API_BASE}/api/status/${jobId}`);
+          const data = await res.json();
+
+          updateProgress(data.progress || 20, data.message || "Processing...");
+
+          if (data.status === "completed") {
+            clearInterval(timer);
+            resetBtn();
+            renderClips(data);
+          } else if (data.status === "failed") {
+            clearInterval(timer);
+            resetBtn();
+            showError(data.error || "Processing failed. Try another public video.");
+          }
+        } catch (e) {
+          // Keep polling through temporary network hiccups
+        }
+      }, 3000);
+    }
+
+    function updateProgress(pct, msg) {
+      document.getElementById("progressBar").style.width = `${pct}%`;
+      document.getElementById("percentText").textContent = `${pct}%`;
+      document.getElementById("statusText").textContent = msg;
+    }
+
+    function renderClips(data) {
+      document.getElementById("resultsSection").classList.remove("hidden");
+      document.getElementById("videoTitleTag").textContent = data.title || "";
+      const grid = document.getElementById("clipsGrid");
+      grid.innerHTML = "";
+
+      data.clips.forEach((clip, idx) => {
+        const videoSrc = `${API_BASE}${clip.download_url}`;
+        const card = document.createElement("div");
+        card.className = "glass rounded-3xl overflow-hidden flex flex-col border border-white/10 hover:border-violet-500/40 transition";
+        card.innerHTML = `
+          <div class="relative bg-black aspect-[9/16] max-h-[420px] w-full flex items-center justify-center">
+            <video src="${videoSrc}" controls playsinline class="w-full h-full object-contain"></video>
+            <div class="absolute top-3 left-3 px-3 py-1 rounded-full bg-black/75 backdrop-blur text-xs font-extrabold text-emerald-400 border border-emerald-500/30">
+              🔥 Score: ${clip.score}/100
+            </div>
+            <div class="absolute top-3 right-3 px-2.5 py-1 rounded-full bg-black/75 text-xs font-semibold text-slate-300">
+              ${clip.start_fmt} - ${clip.end_fmt}
+            </div>
+          </div>
+          <div class="p-5 flex-1 flex flex-col justify-between">
+            <div>
+              <h3 class="font-bold text-base text-white mb-1.5 leading-snug">#${idx + 1}: ${clip.title}</h3>
+              <p class="text-xs text-slate-400 leading-relaxed mb-4">${clip.reason}</p>
+            </div>
+            <a href="${videoSrc}" download="ClipForge_${idx + 1}.mp4" target="_blank"
+               class="btn-primary w-full py-3 rounded-xl text-center text-sm font-bold text-white block">
+              ⬇️ Download 9:16 MP4
+            </a>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    function showError(msg) {
+      const box = document.getElementById("errorBox");
+      box.textContent = "⚠️ " + msg;
+      box.classList.remove("hidden");
+    }
+    function hideError() {
+      document.getElementById("errorBox").classList.add("hidden");
+    }
+    function resetBtn() {
+      const btn = document.getElementById("generateBtn");
+      btn.disabled = false;
+      btn.classList.remove("opacity-60");
+    }
+  </script>
+</body>
+  </html>
+
