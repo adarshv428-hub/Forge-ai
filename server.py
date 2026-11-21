@@ -10,7 +10,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import yt_dlp
-from groq import Groq
+from google import genai
+from google.genai import types
 
 app = FastAPI(title="ClipForge AI Backend")
 
@@ -57,10 +58,10 @@ def process_video_job(job_id: str, req: ClipRequest):
     job_dir.mkdir(parents=True, exist_ok=True)
 
     try:
-        groq_key = os.environ.get("GROQ_API_KEY", "").strip()
-        if not groq_key:
-            raise RuntimeError("GROQ_API_KEY is missing in Render Environment Variables.")
-        client = Groq(api_key=groq_key)
+        gemini_key = os.environ.get("GEMINI_API_KEY", "").strip()
+        if not gemini_key:
+            raise RuntimeError("GEMINI_API_KEY is missing in Render Environment Variables.")
+        client = genai.Client(api_key=gemini_key)
 
         # 1. Download video (Supports YouTube & Twitch VODs/Clips)
         JOBS[job_id].update(progress=15, message="Fetching video from YouTube / Twitch...")
@@ -71,7 +72,7 @@ def process_video_job(job_id: str, req: ClipRequest):
             "merge_output_format": "mp4",
             "quiet": True,
             "no_warnings": True,
-            "max_filesize": 350 * 1024 * 1024,  # 350MB safety limit for free tier RAM/disk
+            "max_filesize": 350 * 1024 * 1024,
         }
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -81,8 +82,8 @@ def process_video_job(job_id: str, req: ClipRequest):
 
         JOBS[job_id]["title"] = video_title
 
-        # 2. Extract lightweight MP3 audio for fast transcription
-        JOBS[job_id].update(progress=38, message="Extracting audio track...")
+        # 2. Extract lightweight MP3 audio for Gemini audio understanding
+        JOBS[job_id].update(progress=40, message="Extracting audio track for Gemini AI...")
         audio_path = job_dir / "audio.mp3"
         run_cmd([
             "ffmpeg", "-y", "-i", str(video_path),
@@ -90,32 +91,16 @@ def process_video_job(job_id: str, req: ClipRequest):
             str(audio_path)
         ])
 
-        # 3. Transcribe with timestamps via Groq Whisper
-        JOBS[job_id].update(progress=55, message="AI transcribing speech with timestamps...")
-        with open(audio_path, "rb") as audio_file:
-            transcript = client.audio.transcriptions.create(
-                file=(audio_path.name, audio_file.read()),
-                model="whisper-large-v3-turbo",
-                response_format="verbose_json",
-                timestamp_granularities=["segment"]
-            )
+        # 3. Upload audio & detect viral moments with Gemini 3.8 Flash
+        JOBS[job_id].update(progress=62, message="Gemini AI listening & finding viral hooks...")
+        uploaded_audio = client.files.upload(file=str(audio_path))
 
-        segments = getattr(transcript, "segments", []) or []
-        if not segments:
-            raise RuntimeError("No speech detected in this video.")
-
-        formatted_transcript = "\n".join([
-            f"[{seg['start']:.1f}s - {seg['end']:.1f}s] {seg['text'].strip()}"
-            for seg in segments
-        ])[:28000]  # Keep within free LLM context window
-
-        # 4. Detect viral moments using Groq Llama 3.3 70B
-        JOBS[job_id].update(progress=72, message="AI scanning for viral hooks & high-retention moments...")
         keyword_rule = f"Prioritize moments related to: '{req.keyword}'." if req.keyword else ""
         prompt = f"""
 You are a viral short-form video editor (TikTok, Reels, YouTube Shorts).
-Analyze this timestamped transcript and pick the top {req.clip_count} most viral, self-contained moments.
+Listen to this audio track and identify the top {req.clip_count} most viral, high-retention, self-contained moments.
 Each clip should be roughly {req.target_duration} seconds long (minimum 15s, maximum 75s).
+Provide exact start and end timestamps in seconds (e.g., 14.5 and 58.0).
 {keyword_rule}
 
 Return ONLY valid JSON in this exact structure:
@@ -130,23 +115,29 @@ Return ONLY valid JSON in this exact structure:
     }}
   ]
 }}
-
-Transcript:
-{formatted_transcript}
 """
-        chat = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"},
-            temperature=0.4
+        response = client.models.generate_content(
+            model="gemini-3.8-flash",
+            contents=[uploaded_audio, prompt],
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                temperature=0.4
+            )
         )
-        ai_data = json.loads(chat.choices[0].message.content)
+
+        # Clean up remote file from Gemini storage
+        try:
+            client.files.delete(name=uploaded_audio.name)
+        except Exception:
+            pass
+
+        ai_data = json.loads(response.text)
         raw_clips = ai_data.get("clips", [])[:req.clip_count]
 
         if not raw_clips:
             raise RuntimeError("AI could not identify clear clip segments.")
 
-        # 5. Render 9:16 vertical clips with FFmpeg
+        # 4. Render 9:16 vertical clips with FFmpeg
         output_clips = []
         for idx, c in enumerate(raw_clips):
             pct = 75 + int(((idx + 1) / len(raw_clips)) * 22)
@@ -162,7 +153,6 @@ Transcript:
             out_path = CLIPS_DIR / out_name
 
             if req.layout == "blur":
-                # Blurred background + sharp centered 16:9 video in 720x1280
                 vf = (
                     "split[bg][fg];"
                     "[bg]scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,boxblur=20:10[bgb];"
@@ -170,7 +160,6 @@ Transcript:
                     "[bgb][fgs]overlay=(W-w)/2:(H-h)/2"
                 )
             else:
-                # Center-cropped 9:16 fill (720x1280)
                 vf = "scale=-2:1280,crop=720:1280:(iw-720)/2:0"
 
             run_cmd([
@@ -208,7 +197,7 @@ Transcript:
 
 @app.get("/")
 def health():
-    return {"status": "online", "service": "ClipForge AI"}
+    return {"status": "online", "service": "ClipForge AI (Gemini 3.8 Flash)"}
 
 
 @app.post("/api/process")
@@ -224,4 +213,4 @@ def get_status(job_id: str):
     if job_id not in JOBS:
         raise HTTPException(status_code=404, detail="Job not found")
     return JOBS[job_id]
-      
+        
